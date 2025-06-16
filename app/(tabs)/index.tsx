@@ -1,75 +1,205 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import styled from "@emotion/native"
+import AsyncStorage from "@react-native-async-storage/async-storage"
+import Checkbox from "expo-checkbox"
+import React, { useEffect, useState } from "react"
+import {
+  FlatList,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native"
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+const Container = styled.View`
+  flex: 1;
+  margin-top: 40px;
+  align-items: center;
+  display: flex;
+  gap: 16px;
+`
+
+const ButtonContainer = styled.View`
+  align-items: center;
+  background-color: grey;
+  border-radius: 8px;
+  padding: 10px;
+`
+
+const ItemContainer = styled.View`
+  flex-direction: row;
+  flex: 1;
+  align-items: center;
+  display: flex;
+  gap: 20px;
+`
+
+interface ToDoItemProps {
+  text: string
+  isCompleted: boolean
+}
 
 export default function HomeScreen() {
+  const [textToAdd, setTextToAdd] = useState<string>("")
+  const [toDoItems, setToDoItems] = useState<ToDoItemProps[]>([])
+
+  const storeData = async (value: ToDoItemProps[]) => {
+    try {
+      const jsonValue = JSON.stringify(value)
+      await AsyncStorage.setItem("to-do-list", jsonValue)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const getData = async () => {
+    try {
+      const jsonValue = await AsyncStorage.getItem("to-do-list")
+      return jsonValue != null ? JSON.parse(jsonValue) : null
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  useEffect(() => {
+    ;(async () => {
+      const todoPersist = (await getData()) as ToDoItemProps[] | null
+      if (!todoPersist) {
+        setToDoItems([])
+        return
+      } else {
+        setToDoItems(todoPersist)
+      }
+    })()
+  }, [])
+
+  useEffect(() => {
+    storeData(toDoItems)
+  }, [toDoItems])
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
-  );
+    <Container>
+      <View>
+        <Text style={{ fontSize: 24, fontWeight: "bold" }}>To-Do List</Text>
+      </View>
+      <TextInput
+        style={styles.input}
+        onChangeText={setTextToAdd}
+        value={textToAdd}
+      ></TextInput>
+      <ButtonContainer>
+        <TouchableOpacity
+          onPress={() => {
+            if (textToAdd === "") {
+              return
+            }
+            setToDoItems([
+              ...toDoItems,
+              {
+                text: textToAdd,
+                isCompleted: false,
+              },
+            ])
+            setTextToAdd("")
+          }}
+        >
+          <Text style={{ color: "white" }}>Add Item</Text>
+        </TouchableOpacity>
+      </ButtonContainer>
+
+      <View>
+        {/* {toDoItems.map((item, index) => {
+          return (
+            <ItemContainer key={index}>
+              <Checkbox
+                style={styles.checkbox}
+                value={item.isCompleted}
+                onValueChange={(v) => {
+                  const updatedItems = [...toDoItems]
+                  updatedItems.map((i, idx) => {
+                    if (idx === index) {
+                      i.isCompleted = v
+                    }
+                    return i
+                  })
+                  setToDoItems(updatedItems)
+                }}
+              ></Checkbox>
+              <Text>{item.text}</Text>
+              <Pressable
+                onPress={() => {
+                  const updatedItems = [...toDoItems]
+                  updatedItems.splice(index, 1)
+                  setToDoItems(updatedItems)
+                }}
+              >
+                <Text style={{ color: "red" }}>Delete</Text>
+              </Pressable>
+            </ItemContainer>
+          )
+        })} */}
+        <SafeAreaView>
+          <ScrollView>
+            <FlatList
+              data={toDoItems}
+              renderItem={({ item, index }) => {
+                return (
+                  <ItemContainer key={index}>
+                    <Checkbox
+                      style={styles.checkbox}
+                      value={item.isCompleted}
+                      onValueChange={(v) => {
+                        const updatedItems = [...toDoItems]
+                        updatedItems.map((i, idx) => {
+                          if (idx === index) {
+                            i.isCompleted = v
+                          }
+                          return i
+                        })
+                        setToDoItems(updatedItems)
+                      }}
+                    ></Checkbox>
+                    <Text>{item.text}</Text>
+                    <Pressable
+                      onPress={() => {
+                        const updatedItems = [...toDoItems]
+                        updatedItems.splice(index, 1)
+                        setToDoItems(updatedItems)
+                      }}
+                    >
+                      <Text style={{ color: "red" }}>Delete</Text>
+                    </Pressable>
+                  </ItemContainer>
+                )
+              }}
+            />
+          </ScrollView>
+        </SafeAreaView>
+      </View>
+    </Container>
+  )
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  input: {
+    height: 40,
+    margin: 12,
+    borderWidth: 1,
+    padding: 10,
+    width: "80%",
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  container: {
+    flex: 1,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  item: {
+    padding: 10,
+    fontSize: 18,
+    height: 44,
   },
-});
+  checkbox: {
+    margin: 8,
+  },
+})
